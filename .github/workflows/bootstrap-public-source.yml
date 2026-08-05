@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - '.github/workflows/bootstrap-public-source.yml'
+      - '.bootstrap/**'
   workflow_dispatch:
 
 permissions:
