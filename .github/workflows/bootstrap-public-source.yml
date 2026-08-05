@@ -1,0 +1,45 @@
+name: Bootstrap Sanitized Public Source
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/bootstrap-public-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-sanitized-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout public repository
+        uses: actions/checkout@v4
+
+      - name: Reconstruct and verify sanitized source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .bootstrap/source.part* | base64 -d > /tmp/locowiki-public-source.tar.gz
+          echo '612194eaa695768532f3752d47aa609e116ab507745cb6518b089f3ce4736b39  /tmp/locowiki-public-source.tar.gz' | sha256sum -c -
+          mkdir -p /tmp/locowiki-public-source
+          tar -xzf /tmp/locowiki-public-source.tar.gz -C /tmp/locowiki-public-source
+          SOURCE='/tmp/locowiki-public-source/locowiki-android-public-ci'
+          test -f "$SOURCE/scripts/verify_public_tree.py"
+          rsync -a --exclude '.git/' --exclude 'README.md' "$SOURCE/" ./
+          python scripts/verify_public_tree.py
+          python scripts/verify_privacy.py
+
+      - name: Commit sanitized source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'feat: import sanitized LocoWiki Android source'
+          git push origin HEAD:main
