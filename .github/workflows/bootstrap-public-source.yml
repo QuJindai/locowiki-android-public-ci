@@ -27,7 +27,14 @@ jobs:
           5c3706d50cf36b11fb909f0e0db9294225c7f1d0003cef9159ac66e21f624cef  .bootstrap/source.part00
           2349fd364c8afc6532c2ef79a7b9113109e025debac87980a2507db07b126405  .bootstrap/source.part01
           66fc0a1f7ee59fdc78207d12d9395643fefc30ac97a5e9d9b13abdcd2be12ebd  .bootstrap/source.part02
-          5451b66d8b898f838e93d245705a7fcd3b7161efdbf9c7514929475d0bbc5969  .bootstrap/source.part03
+          1555bb0bdbaf2bfe73767c0f60368dd6c423c9ee941dc3c3e694a88f837568d9  .bootstrap/source.part03.00
+          f284435cd3c71cd03e7ea981da53a09183d4e3d459ad675d7a1aec2b3fe85ba0  .bootstrap/source.part03.01
+          dc9a7f4894debab99fb0286ab67e8cf5ff00fcaa3878a80cb9e9e91aff164057  .bootstrap/source.part03.02
+          8a1d683469d8e312c957de924b3406ce67c4b5235f3c1e870d75a4bbf8bc7a70  .bootstrap/source.part03.03
+          6528b1062211e7387d552f57dea18b79afd2452e2d344d4f761f78f94a5ed133  .bootstrap/source.part03.04
+          0fdd48c00adc4149cf50deee6673d9a7e165fda8e57655de0a5e964c508833eb  .bootstrap/source.part03.05
+          f03d70eb6c4f0f96466e8ac5fe4e6986921a63a2c15242af7e3157825a79f83b  .bootstrap/source.part03.06
+          011ac086b4eb7cf6f7ebcb1490a559bbf397decf8e9d10309f97df6ed312054a  .bootstrap/source.part03.07
           248d640b48a8fb33c67311a44678e2d6c0e2df173485df2d9857a8e369d9e64b  .bootstrap/source.part04
           6f1a1302023b8030f236944ddb61665697a3e87c8b738bd3eb17bb82bbffb681  .bootstrap/source.part05
           9ff426810fa857c2ffb61d69d2d032cf5ec35aebb6aeccc3c8fbd7f8adf1f08d  .bootstrap/source.part06
@@ -38,7 +45,27 @@ jobs:
           0ddc7a6e80ad3e4455b299d64c17ff11cedc61d1d4bdec8d2ef8401db071da67  .bootstrap/source.part11
           EOF
           sha256sum -c /tmp/EXPECTED_PART_SHA256
-          cat .bootstrap/source.part* | base64 -d > /tmp/locowiki-public-source.tar.gz
+          cat \
+            .bootstrap/source.part00 \
+            .bootstrap/source.part01 \
+            .bootstrap/source.part02 \
+            .bootstrap/source.part03.00 \
+            .bootstrap/source.part03.01 \
+            .bootstrap/source.part03.02 \
+            .bootstrap/source.part03.03 \
+            .bootstrap/source.part03.04 \
+            .bootstrap/source.part03.05 \
+            .bootstrap/source.part03.06 \
+            .bootstrap/source.part03.07 \
+            .bootstrap/source.part04 \
+            .bootstrap/source.part05 \
+            .bootstrap/source.part06 \
+            .bootstrap/source.part07 \
+            .bootstrap/source.part08 \
+            .bootstrap/source.part09 \
+            .bootstrap/source.part10 \
+            .bootstrap/source.part11 \
+            | base64 -d > /tmp/locowiki-public-source.tar.gz
           echo '612194eaa695768532f3752d47aa609e116ab507745cb6518b089f3ce4736b39  /tmp/locowiki-public-source.tar.gz' | sha256sum -c -
           mkdir -p /tmp/locowiki-public-source
           tar -xzf /tmp/locowiki-public-source.tar.gz -C /tmp/locowiki-public-source
