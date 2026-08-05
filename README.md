@@ -14,11 +14,11 @@ Offline Android meeting fact-recall prototype for local ASR, speaker identificat
 - `s24uDebug`: `arm64-v8a` phone build.
 - `qaDebug`: `x86_64` emulator QA build.
 
-Run:
+Run with JDK 17, Android SDK 36 and Gradle 8.11.1:
 
 ```bash
 bash scripts/download_models.sh
-./gradlew testQaDebugUnitTest assembleS24uDebug assembleQaDebug
+gradle --no-daemon testQaDebugUnitTest assembleS24uDebug assembleQaDebug
 ```
 
 ## Source provenance

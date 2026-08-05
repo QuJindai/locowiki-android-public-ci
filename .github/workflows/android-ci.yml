@@ -1,0 +1,103 @@
+name: Android Public CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle 8.11.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager \
+            'platforms;android-36' \
+            'build-tools;36.0.0' \
+            'platform-tools'
+
+      - name: Verify public source tree
+        run: python scripts/verify_public_tree.py
+
+      - name: Download pinned public models
+        run: bash scripts/download_models.sh
+
+      - name: Enforce application privacy boundary
+        run: python scripts/verify_privacy.py
+
+      - name: Run unit tests and build ABI-specific APKs
+        run: gradle --no-daemon testQaDebugUnitTest assembleQaDebug assembleS24uDebug
+
+      - name: Verify APK ABI and permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          QA_APK="$(find app/build/outputs/apk -type f -name '*qa*debug*.apk' | head -1)"
+          PHONE_APK="$(find app/build/outputs/apk -type f -name '*s24u*debug*.apk' | head -1)"
+          test -s "$QA_APK"
+          test -s "$PHONE_APK"
+          export QA_APK PHONE_APK
+          python - <<'PY'
+          import os
+          from zipfile import ZipFile
+
+          def apk_abis(path: str) -> set[str]:
+              with ZipFile(path) as archive:
+                  return {
+                      name.split('/')[1]
+                      for name in archive.namelist()
+                      if name.startswith('lib/') and name.count('/') >= 2
+                  }
+
+          qa = os.environ['QA_APK']
+          phone = os.environ['PHONE_APK']
+          qa_abis = apk_abis(qa)
+          phone_abis = apk_abis(phone)
+          assert qa_abis == {'x86_64'}, (qa, qa_abis)
+          assert phone_abis == {'arm64-v8a'}, (phone, phone_abis)
+          print(f'ABI_GATE_OK qa={qa_abis} phone={phone_abis}')
+          PY
+
+          AAPT2="$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          "$AAPT2" dump permissions "$PHONE_APK" | tee phone-permissions.txt
+          grep -q 'android.permission.RECORD_AUDIO' phone-permissions.txt
+          if grep -q 'android.permission.INTERNET' phone-permissions.txt; then
+            exit 1
+          fi
+
+          sha256sum "$QA_APK" "$PHONE_APK" | tee APK_SHA256SUMS.txt
+
+      - name: Upload APKs for manual runs only
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: locowiki-android-debug-apks
+          path: |
+            app/build/outputs/apk/**/*.apk
+            APK_SHA256SUMS.txt
+            phone-permissions.txt
+          retention-days: 3
