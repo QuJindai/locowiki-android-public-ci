@@ -32,7 +32,9 @@ jobs:
           dc9a7f4894debab99fb0286ab67e8cf5ff00fcaa3878a80cb9e9e91aff164057  .bootstrap/source.part03.02
           8a1d683469d8e312c957de924b3406ce67c4b5235f3c1e870d75a4bbf8bc7a70  .bootstrap/source.part03.03
           6528b1062211e7387d552f57dea18b79afd2452e2d344d4f761f78f94a5ed133  .bootstrap/source.part03.04
-          0fdd48c00adc4149cf50deee6673d9a7e165fda8e57655de0a5e964c508833eb  .bootstrap/source.part03.05
+          3bb46ea2f35e45e24a27c4c1309fc76953e2157f947f101756d166c2b5a5eb79  .bootstrap/source.part03.05.00
+          59f3aa9d7cabf88ff05b4bb2e6e2bfe1bca2cb46479eeb454ebe824a254bfa9b  .bootstrap/source.part03.05.01
+          046a0fe9f2bed60419a67f910950d366d2c5d9874753559fa95ebc6fac3bac54  .bootstrap/source.part03.05.02
           f03d70eb6c4f0f96466e8ac5fe4e6986921a63a2c15242af7e3157825a79f83b  .bootstrap/source.part03.06
           011ac086b4eb7cf6f7ebcb1490a559bbf397decf8e9d10309f97df6ed312054a  .bootstrap/source.part03.07
           248d640b48a8fb33c67311a44678e2d6c0e2df173485df2d9857a8e369d9e64b  .bootstrap/source.part04
@@ -54,7 +56,9 @@ jobs:
             .bootstrap/source.part03.02 \
             .bootstrap/source.part03.03 \
             .bootstrap/source.part03.04 \
-            .bootstrap/source.part03.05 \
+            .bootstrap/source.part03.05.00 \
+            .bootstrap/source.part03.05.01 \
+            .bootstrap/source.part03.05.02 \
             .bootstrap/source.part03.06 \
             .bootstrap/source.part03.07 \
             .bootstrap/source.part04 \
