@@ -17,7 +17,7 @@ class QaScenarioFactoryTest {
         assertEquals("A", state.activeThread?.initiatorLabel)
         assertTrue(state.activeThread?.canonicalQuestion.orEmpty().contains("最终合同价"))
         assertTrue(state.answer?.answer.orEmpty().contains("12.3"))
-        assertTrue(state.answer?.evidence.orEmpty().contains("设备采购定点表"))
+        assertTrue(state.answer?.evidence.orEmpty().contains("脱敏演示数据"))
         assertEquals(5, state.lastSessionSummary?.utteranceCount)
     }
 }
