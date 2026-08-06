@@ -77,9 +77,15 @@ jobs:
           python - <<'PY'
           import os
           from zipfile import ZipFile
+
           def abis(path):
-              with ZipFile(path) as z:
-                  return {n.split('/')[1] for n in z.namelist() if n.startswith('lib/') and n.count('/') >= 2}
+              with ZipFile(path) as archive:
+                  return {
+                      name.split('/')[1]
+                      for name in archive.namelist()
+                      if name.startswith('lib/') and name.count('/') >= 2
+                  }
+
           assert abis(os.environ['QA_APK']) == {'x86_64'}
           assert abis(os.environ['PHONE_APK']) == {'arm64-v8a'}
           print('ABI_GATE_OK')
@@ -111,19 +117,11 @@ jobs:
 
           ## Galaxy S24 Ultra 真机调试
 
-          在 Build Variants 中选择：
-
-          `app -> s24uDebug`
-
-          然后连接已开启 USB 调试的手机，直接运行 app。
+          在 Build Variants 中选择 `app -> s24uDebug`，然后连接已开启 USB 调试的手机，直接运行 app。
 
           ## 模拟器调试
 
-          在 Build Variants 中选择：
-
-          `app -> qaDebug`
-
-          使用 x86_64 Android 模拟器。
+          在 Build Variants 中选择 `app -> qaDebug`，使用 x86_64 Android 模拟器。
 
           ## 命令行验证
 
@@ -144,24 +142,44 @@ jobs:
           - 当前是 V0.3.1 公共绿色基线，尚未整合会前独立声纹档案库修复。
           EOF
 
-      - name: Remove build outputs and package complete source
+      - name: Package complete source without moving checkout directory
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf .git app/build build .gradle
-          printf '%s\n' '3d7ae8de85217fc7a911d6d94618cd2937670e0f' > SOURCE_BASELINE_SHA.txt
-          find . -type f -print0 | sort -z | xargs -0 sha256sum > BUNDLE_FILE_SHA256SUMS.txt
-          cd ..
-          mv locowiki-android-public-ci locowiki-android-as
-          zip -q -r locowiki-android-as-complete.zip locowiki-android-as
-          sha256sum locowiki-android-as-complete.zip > locowiki-android-as-complete.zip.sha256
+          rm -rf dist
+          mkdir -p dist/locowiki-android-as
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.gradle/' \
+            --exclude='build/' \
+            --exclude='app/build/' \
+            --exclude='dist/' \
+            --exclude='.github/workflows/local-as-bundle.yml' \
+            ./ dist/locowiki-android-as/
+          printf '%s\n' '3d7ae8de85217fc7a911d6d94618cd2937670e0f' \
+            > dist/locowiki-android-as/SOURCE_BASELINE_SHA.txt
+          (
+            cd dist/locowiki-android-as
+            find . -type f ! -name 'BUNDLE_FILE_SHA256SUMS.txt' -print0 \
+              | sort -z \
+              | xargs -0 sha256sum \
+              > BUNDLE_FILE_SHA256SUMS.txt
+          )
+          (
+            cd dist
+            zip -q -r locowiki-android-as-complete.zip locowiki-android-as
+            sha256sum locowiki-android-as-complete.zip \
+              > locowiki-android-as-complete.zip.sha256
+          )
+          test -s dist/locowiki-android-as-complete.zip
+          unzip -tq dist/locowiki-android-as-complete.zip
 
       - name: Upload complete Android Studio bundle
         uses: actions/upload-artifact@v4
         with:
           name: locowiki-android-as-complete
           path: |
-            ../locowiki-android-as-complete.zip
-            ../locowiki-android-as-complete.zip.sha256
+            dist/locowiki-android-as-complete.zip
+            dist/locowiki-android-as-complete.zip.sha256
           retention-days: 3
           compression-level: 0
