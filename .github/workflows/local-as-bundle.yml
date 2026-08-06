@@ -1,0 +1,167 @@
+name: Build Local Android Studio Bundle
+
+on:
+  push:
+    branches:
+      - chore/local-as-bundle-20260805
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout pinned branch
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle 8.11.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager \
+            'platforms;android-36' \
+            'build-tools;36.0.0' \
+            'platform-tools'
+
+      - name: Verify source and download pinned models
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/verify_public_tree.py
+          bash scripts/download_models.sh
+          python scripts/verify_privacy.py
+
+      - name: Generate Gradle wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle wrapper --gradle-version 8.11.1 --distribution-type bin
+          chmod +x gradlew
+
+      - name: Verify tests and both ABI builds
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon testQaDebugUnitTest assembleQaDebug assembleS24uDebug
+
+      - name: Verify model files and APK ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s app/libs/sherpa-onnx-1.13.2.aar
+          test -s app/src/main/assets/silero_vad.onnx
+          test -s app/src/main/assets/speaker/3dspeaker_speech_campplus_sv_zh-cn_16k-common.onnx
+          test -s app/src/main/assets/sherpa-onnx-streaming-zipformer-small-bilingual-zh-en-2023-02-16/encoder-epoch-99-avg-1.int8.onnx
+          test -s app/src/main/assets/sherpa-onnx-streaming-zipformer-small-bilingual-zh-en-2023-02-16/decoder-epoch-99-avg-1.onnx
+          test -s app/src/main/assets/sherpa-onnx-streaming-zipformer-small-bilingual-zh-en-2023-02-16/joiner-epoch-99-avg-1.int8.onnx
+          test -s app/src/main/assets/sherpa-onnx-streaming-zipformer-small-bilingual-zh-en-2023-02-16/tokens.txt
+          QA_APK="$(find app/build/outputs/apk -type f -name '*qa*debug*.apk' | head -1)"
+          PHONE_APK="$(find app/build/outputs/apk -type f -name '*s24u*debug*.apk' | head -1)"
+          export QA_APK PHONE_APK
+          python - <<'PY'
+          import os
+          from zipfile import ZipFile
+          def abis(path):
+              with ZipFile(path) as z:
+                  return {n.split('/')[1] for n in z.namelist() if n.startswith('lib/') and n.count('/') >= 2}
+          assert abis(os.environ['QA_APK']) == {'x86_64'}
+          assert abis(os.environ['PHONE_APK']) == {'arm64-v8a'}
+          print('ABI_GATE_OK')
+          PY
+
+      - name: Add local Android Studio guide
+        shell: bash
+        run: |
+          cat > README_LOCAL_ANDROID_STUDIO.md <<'EOF'
+          # 本地 Android Studio 调试说明
+
+          ## 已集成内容
+
+          - 完整 Kotlin/Compose 源码
+          - Gradle Wrapper 8.11.1
+          - Sherpa-ONNX 1.13.2 AAR
+          - 中英双语 Zipformer ASR 模型
+          - Silero VAD 模型
+          - CAMPPlus 192维说话人模型
+          - x86_64 QA 与 arm64-v8a S24U 两个 product flavor
+
+          ## Android Studio 打开方式
+
+          1. 解压到纯英文、短路径目录，例如 `D:\Projects\locowiki-android-as`。
+          2. Android Studio 选择 Open，打开包含 `settings.gradle.kts` 的根目录。
+          3. Gradle JDK 选择 JDK 17。
+          4. 安装 Android SDK Platform 36 和 Build-Tools 36.0.0。
+          5. 等待 Gradle Sync 完成。
+
+          ## Galaxy S24 Ultra 真机调试
+
+          在 Build Variants 中选择：
+
+          `app -> s24uDebug`
+
+          然后连接已开启 USB 调试的手机，直接运行 app。
+
+          ## 模拟器调试
+
+          在 Build Variants 中选择：
+
+          `app -> qaDebug`
+
+          使用 x86_64 Android 模拟器。
+
+          ## 命令行验证
+
+          Windows PowerShell：
+
+          `.\gradlew.bat testQaDebugUnitTest assembleS24uDebug assembleQaDebug`
+
+          macOS/Linux：
+
+          `./gradlew testQaDebugUnitTest assembleS24uDebug assembleQaDebug`
+
+          ## 重要说明
+
+          - `s24uDebug` 才是 ARM64 手机包。
+          - `qaDebug` 是 x86_64 模拟器包，不能安装到 S24 Ultra。
+          - 应用声明麦克风权限，但不声明 INTERNET 权限。
+          - 本包固定对应公共主线提交 `3d7ae8de85217fc7a911d6d94618cd2937670e0f`。
+          - 当前是 V0.3.1 公共绿色基线，尚未整合会前独立声纹档案库修复。
+          EOF
+
+      - name: Remove build outputs and package complete source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .git app/build build .gradle
+          printf '%s\n' '3d7ae8de85217fc7a911d6d94618cd2937670e0f' > SOURCE_BASELINE_SHA.txt
+          find . -type f -print0 | sort -z | xargs -0 sha256sum > BUNDLE_FILE_SHA256SUMS.txt
+          cd ..
+          mv locowiki-android-public-ci locowiki-android-as
+          zip -q -r locowiki-android-as-complete.zip locowiki-android-as
+          sha256sum locowiki-android-as-complete.zip > locowiki-android-as-complete.zip.sha256
+
+      - name: Upload complete Android Studio bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: locowiki-android-as-complete
+          path: |
+            ../locowiki-android-as-complete.zip
+            ../locowiki-android-as-complete.zip.sha256
+          retention-days: 3
+          compression-level: 0
